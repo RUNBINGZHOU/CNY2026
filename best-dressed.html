@@ -1,0 +1,311 @@
+<!-- best-dressed.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Best Dressed — CNY 2026 Grand Dinner</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <div class="brand-title">CNY 2026</div>
+      <div class="brand-sub">Grand Dinner</div>
+    </div>
+    <nav class="nav">
+      <a href="index.html">Overview</a>
+      <a href="schedule.html">Schedule</a>
+      <a class="active" href="best-dressed.html">Best Dressed</a>
+      <a href="faqs.html">FAQs</a>
+    </nav>
+  </div>
+</div>
+
+<div class="container">
+  <div class="page-hero">
+    <div class="page-kicker">BEST DRESSED STARS · 2026 EDITION</div>
+    <h1 class="page-title">Huat or Not?</h1>
+    <p class="page-subtitle">
+      One vote per person. Voting is not anonymous — everyone can see the full vote list.
+    </p>
+  </div>
+
+  <div class="vote-grid">
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Cast Your Vote</div>
+        <div class="card-hint">Please use your real name.</div>
+      </div>
+
+      <div class="form-row">
+        <label class="label">Your Name</label>
+        <input id="voterName" class="input" type="text" placeholder="e.g., Emily Zhou" />
+      </div>
+
+      <div class="form-row">
+        <div class="label-row">
+          <label class="label">Vote For</label>
+          <span class="label-note">Choose the best dressed star.</span>
+        </div>
+        <select id="choice" class="select">
+          <option value="">Loading candidates...</option>
+        </select>
+      </div>
+
+      <div class="btn-row">
+        <button id="btnVote" class="btn btn-primary">Submit Vote</button>
+        <button id="btnRefresh" class="btn btn-ghost">Refresh</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div class="divider"></div>
+
+      <div class="subhead">Judging Criteria</div>
+    <ul class="bullets">
+        <li><b>Festive:</b> LNY vibe, effortless.</li>
+        <li><b>Finish:</b> Grooming + details (hair, shoes, accessories).</li>
+        <li><b>Presence:</b> Confidence and overall styling.</li>
+        <li><b>Palette:</b> Clean, well-matched colors.</li>
+        <li><b>Signature:</b> One memorable highlight.</li>
+    </ul>
+
+      <div class="divider"></div>
+
+      <div class="subhead">Admin Reset</div>
+      <div class="reset-row">
+        <input id="adminPassword" class="input" type="password" placeholder="Admin password" />
+        <button id="btnReset" class="btn btn-danger">Reset</button>
+      </div>
+      <div class="tiny-note">Reset is restricted to the admin password.</div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">Live Tally</div>
+        <div class="card-hint">Sorted by votes (desc).</div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="tallyTable">
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th class="right">Votes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="2" class="muted">No data yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="card-header">
+        <div class="card-title">Vote List (Not Anonymous)</div>
+        <div class="card-hint">Who voted for whom.</div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" id="voteListTable">
+          <thead>
+            <tr>
+              <th>Voter</th>
+              <th>Voted For</th>
+              <th class="right">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="3" class="muted">No votes yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">© CNY 2026 Grand Dinner</div>
+</div>
+
+<script>
+  const API_BASE = "https://script.google.com/macros/s/AKfycbzyIq7VLW4J1lvhEaOiODLAbuCqRJru4ZbYJHiCIMyn_3SzGjuqj1cSB9V0KD1f4nbL/exec";
+
+  function jsonp(url) {
+    return new Promise((resolve, reject) => {
+      const cb = "cb_" + Math.random().toString(36).slice(2);
+      const script = document.createElement("script");
+      const sep = url.includes("?") ? "&" : "?";
+      const full = url + sep + "callback=" + encodeURIComponent(cb) + "&_ts=" + Date.now();
+
+      window[cb] = (data) => {
+        delete window[cb];
+        script.remove();
+        resolve(data);
+      };
+
+      script.onerror = () => {
+        delete window[cb];
+        script.remove();
+        reject(new Error("Failed to load script"));
+      };
+
+      script.src = full;
+      document.body.appendChild(script);
+    });
+  }
+
+  function setStatus(type, msg) {
+    const el = document.getElementById("status");
+    el.className = "status " + (type ? ("status-" + type) : "");
+    el.textContent = msg || "";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function formatTime(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString();
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  async function loadCandidates() {
+    const data = await jsonp(API_BASE + "?action=candidates");
+    if (!data || !data.ok) throw new Error(data && data.error ? data.error : "Failed to load candidates");
+
+    const sel = document.getElementById("choice");
+    sel.innerHTML = '<option value="">Select a candidate</option>';
+
+    for (const name of data.candidates) {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    }
+  }
+
+  function renderResults(data) {
+    const tallyBody = document.querySelector("#tallyTable tbody");
+    const voteBody = document.querySelector("#voteListTable tbody");
+
+    if (!data || !data.ok) {
+      tallyBody.innerHTML = '<tr><td colspan="2" class="muted">No data.</td></tr>';
+      voteBody.innerHTML = '<tr><td colspan="3" class="muted">No data.</td></tr>';
+      return;
+    }
+
+    const tally = data.tally || [];
+    if (tally.length === 0) {
+      tallyBody.innerHTML = '<tr><td colspan="2" class="muted">No data yet.</td></tr>';
+    } else {
+      tallyBody.innerHTML = tally.map(r => `
+        <tr>
+          <td>${escapeHtml(r.name)}</td>
+          <td class="right">${Number(r.votes || 0)}</td>
+        </tr>
+      `).join("");
+    }
+
+    const votes = data.votes || [];
+    if (votes.length === 0) {
+      voteBody.innerHTML = '<tr><td colspan="3" class="muted">No votes yet.</td></tr>';
+    } else {
+      voteBody.innerHTML = votes.map(v => `
+        <tr>
+          <td>${escapeHtml(v.voter)}</td>
+          <td>${escapeHtml(v.choice)}</td>
+          <td class="right">${escapeHtml(formatTime(v.timestamp))}</td>
+        </tr>
+      `).join("");
+    }
+  }
+
+  async function refreshResults() {
+    setStatus("", "Refreshing…");
+    const data = await jsonp(API_BASE + "?action=results");
+    renderResults(data);
+    setStatus("ok", "Updated.");
+  }
+
+  async function submitVote() {
+    const voterName = document.getElementById("voterName").value.trim();
+    const choice = document.getElementById("choice").value.trim();
+
+    if (!voterName) { setStatus("err", "Please enter your name."); return; }
+    if (!choice) { setStatus("err", "Please select a candidate."); return; }
+
+    setStatus("", "Submitting…");
+
+    const url = API_BASE
+      + "?action=vote"
+      + "&voterName=" + encodeURIComponent(voterName)
+      + "&choice=" + encodeURIComponent(choice);
+
+    const data = await jsonp(url);
+    if (!data || !data.ok) {
+      setStatus("err", data && data.error ? data.error : "Failed to submit.");
+      return;
+    }
+
+    setStatus("ok", "Vote submitted. Refreshing results…");
+    await refreshResults();
+  }
+
+  async function adminReset() {
+    const pwd = document.getElementById("adminPassword").value.trim();
+    if (!pwd) { setStatus("err", "Enter admin password."); return; }
+
+    setStatus("", "Resetting…");
+    const url = API_BASE + "?action=reset&password=" + encodeURIComponent(pwd);
+    const data = await jsonp(url);
+
+    if (!data || !data.ok) {
+      setStatus("err", data && data.error ? data.error : "Reset failed.");
+      return;
+    }
+
+    document.getElementById("adminPassword").value = "";
+    setStatus("ok", "Reset completed. Refreshing…");
+    await refreshResults();
+  }
+
+  async function init() {
+    try {
+      await loadCandidates();
+      await refreshResults();
+      setStatus("", "");
+    } catch (e) {
+      setStatus("err", "Failed to load. Check API_BASE (Apps Script URL) and deployment access.");
+    }
+  }
+
+  document.getElementById("btnVote").addEventListener("click", () => {
+    submitVote().catch(() => setStatus("err", "Submit failed. Check Apps Script deployment."));
+  });
+
+  document.getElementById("btnRefresh").addEventListener("click", () => {
+    refreshResults().catch(() => setStatus("err", "Refresh failed. Check Apps Script deployment."));
+  });
+
+  document.getElementById("btnReset").addEventListener("click", () => {
+    adminReset().catch(() => setStatus("err", "Reset failed. Check Apps Script deployment."));
+  });
+
+  init();
+</script>
+
+</body>
+</html>
