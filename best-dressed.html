@@ -41,8 +41,18 @@
       </div>
 
       <div class="form-row">
-        <label class="label">Your Name</label>
-        <input id="voterName" class="input" type="text" placeholder="e.g., Emily Zhou" />
+        <div class="label-row">
+          <label class="label">Your Name</label>
+          <span class="label-note">Select your name from the list.</span>
+        </div>
+
+        <select id="voterName" class="select">
+          <option value="">Loading names...</option>
+        </select>
+
+        <div class="tiny-note">
+          One person, one vote. You may vote for <b>yourself</b>. Voting is <b>not anonymous</b>.
+        </div>
       </div>
 
       <div class="form-row">
@@ -186,14 +196,22 @@
     const data = await jsonp(API_BASE + "?action=candidates");
     if (!data || !data.ok) throw new Error(data && data.error ? data.error : "Failed to load candidates");
 
-    const sel = document.getElementById("choice");
-    sel.innerHTML = '<option value="">Select a candidate</option>';
+    const voterSel = document.getElementById("voterName");
+    const choiceSel = document.getElementById("choice");
+
+    voterSel.innerHTML = '<option value="">Select your name</option>';
+    choiceSel.innerHTML = '<option value="">Select a candidate</option>';
 
     for (const name of data.candidates) {
-      const opt = document.createElement("option");
-      opt.value = name;
-      opt.textContent = name;
-      sel.appendChild(opt);
+      const opt1 = document.createElement("option");
+      opt1.value = name;
+      opt1.textContent = name;
+      voterSel.appendChild(opt1);
+
+      const opt2 = document.createElement("option");
+      opt2.value = name;
+      opt2.textContent = name;
+      choiceSel.appendChild(opt2);
     }
   }
 
